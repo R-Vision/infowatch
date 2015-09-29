@@ -1,0 +1,23 @@
+{
+  "name": "infowatch",
+  "version": "1.0.0",
+  "description": "Infowatch",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/R-Vision/infowatch.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/R-Vision/infowatch/issues"
+  },
+  "homepage": "https://github.com/R-Vision/infowatch#readme",
+  "dependencies": {
+    "bluebird": "^2.10.1",
+    "oracledb": "git+https://github.com/R-Vision/node-oracledb.git"
+  }
+}
