@@ -14,9 +14,29 @@ function keysToLowerCase(obj) {
     return newobj;
 }
 
+function _returnResult(resolve, reject) {
+    return function (err, result) {
+        if (err) {
+            reject(err);
+        } else {
+            resolve(result.rows.map(keysToLowerCase));
+        }
+    };
+}
+
+function _runSql(connection, sql, data) {
+    return new Bluebird(function (resolve, reject) {
+        connection.execute(sql, data || {}, {outFormat: oracledb.OBJECT}, _returnResult(resolve, reject));
+    });
+}
+
 function Infowatch(options) {
     this.options = options;
     this.connection = null;
+
+    if (this.options.schema) {
+        this.schema = this.options.schema;
+    }
 }
 
 Infowatch.prototype.connect = function (options) {
@@ -28,55 +48,91 @@ Infowatch.prototype.connect = function (options) {
                 reject(err);
             } else {
                 self.connection = connection;
-                resolve(connection);
+
+                if (!self.schema) {
+                    self.findIWDMSchema()
+                        .then(function (schema) {
+                            self.schema = schema;
+                            resolve(connection);
+                        })
+                        .catch(reject)
+                } else {
+                    resolve(connection);
+                }
             }
         });
     });
 };
 
-Infowatch.prototype.getHosts = function () {
+Infowatch.prototype.findIWDMSchema = function () {
     var self = this;
+
+    return this.getSchema()
+        .filter(function (schema) {
+            return self.getTables(schema)
+                .filter(function (table) {
+                    return table === 'WorkstationState' || table === 'UserToWorkstation';
+                })
+                .then(function (tables) {
+                    return tables.length > 0;
+                })
+                .catch(function () {
+                    return false;
+                });
+        })
+        .then(function (schema) {
+            if (schema.length > 0) {
+                return schema[0];
+            } else {
+                throw new Error('Schema not found');
+            }
+        });
+};
+
+Infowatch.prototype.getSchema = function () {
+    var sql = 'SELECT DISTINCT username FROM all_users';
+
+    return _runSql(this.connection, sql).map(function (item) {
+        return item.username;
+    });
+};
+
+Infowatch.prototype.getTables = function (schema) {
+    var sql = 'SELECT DISTINCT OBJECT_NAME FROM ALL_OBJECTS WHERE OBJECT_TYPE=:type AND OWNER=:schema';
+
+    return _runSql(this.connection, sql, {
+        type: 'TABLE',
+        schema: schema
+    }).map(function (item) {
+        return item.object_name;
+    });
+};
+
+Infowatch.prototype.getHosts = function () {
     var sql = 'SELECT ' +
         '"Workstation"."Id" as id,' +
         '"WorkstationState"."Status" AS status,' +
         '"WorkstationState"."IpAddress" AS ip,' +
         '"WorkstationState"."OperationSystem" AS os,' +
         '"Workstation"."Address" AS hostname ' +
-        'FROM "IWDM"."Workstation","IWDM"."WorkstationState" ' +
+        'FROM "' + this.schema + '"."Workstation","' + this.schema + '"."WorkstationState" ' +
         'WHERE "Workstation"."Uid"="WorkstationState"."Uid"';
 
-    return new Bluebird(function (resolve, reject) {
-        self.connection.execute(sql, {}, {outFormat: oracledb.OBJECT}, function (err, result) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(result.rows.map(keysToLowerCase));
-            }
-        });
-    });
+    return _runSql(this.connection, sql);
 };
 
 Infowatch.prototype.getUsers = function (WorkstationId) {
-    var self = this;
     var sql = 'SELECT ' +
         '"User"."Account" AS login,' +
         '"User"."Sid" AS sid,' +
         '"User"."FirstName" AS fname,' +
         '"User"."MiddleName" AS mname,' +
         '"User"."LastName" AS lname ' +
-        'FROM "IWDM"."UserToWorkstation","IWDM"."User" ' +
+        'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
         'WHERE "UserToWorkstation"."WorkstationId"=:id AND ' +
         '"UserToWorkstation"."UserId"="User"."Id"';
 
-    return new Bluebird(function (resolve, reject) {
-        self.connection.execute(sql, [WorkstationId], {outFormat: oracledb.OBJECT}, function (err, result) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(result.rows.map(keysToLowerCase));
-            }
-        });
-    });
+    return _runSql(this.connection, sql, [WorkstationId]);
 };
 
 Infowatch.prototype.disconnect = function () {
