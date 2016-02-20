@@ -1,6 +1,6 @@
 {
   "name": "infowatch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Infowatch",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/R-Vision/infowatch#readme",
   "dependencies": {
-    "bluebird": "^2.10.1",
+    "bluebird": "^3.3.1",
     "oracledb": "git+https://github.com/R-Vision/node-oracledb.git"
   }
 }
