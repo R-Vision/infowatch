@@ -2,10 +2,20 @@
 
 ### Usage
 ```javascript
+// Oracle
 var options = {
-    user: "iwdm",
-    password: "xxXX1234",
+    user: "username",
+    password: "password",
     connectString: "192.168.23.150/iwtm"
+};
+
+// MSSQL
+var options = {
+    user: "username",
+    password: "password",
+    server: "hostname",
+    database: 'iwdm',
+    domain: 'DOMAIN'
 };
 
 var infowatch = new Infowatch(options);
