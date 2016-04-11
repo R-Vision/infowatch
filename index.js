@@ -1,5 +1,8 @@
 var oracledb = require('oracledb');
 var Bluebird = require('bluebird');
+var sql = require('mssql');
+
+sql.Promise = Bluebird;
 
 function keysToLowerCase(obj) {
     var key, keys = Object.keys(obj);
@@ -24,10 +27,14 @@ function _returnResult(resolve, reject) {
     };
 }
 
-function _runSql(connection, sql, data) {
-    return new Bluebird(function (resolve, reject) {
-        connection.execute(sql, data || {}, {outFormat: oracledb.OBJECT}, _returnResult(resolve, reject));
-    });
+function _runSql(connection, query, data) {
+    if (this.isOracle) {
+        return new Bluebird(function (resolve, reject) {
+            connection.execute(query, data || {}, {outFormat: oracledb.OBJECT}, _returnResult(resolve, reject));
+        });
+    } else {
+        return new sql.Request().query(query).map(keysToLowerCase);
+    }
 }
 
 function Infowatch(options) {
@@ -37,30 +44,47 @@ function Infowatch(options) {
     if (this.options.schema) {
         this.schema = this.options.schema;
     }
+
+    this.isMssql = this.options.driver === 'tedious' || this.options.driver === 'msnodesqlv8'
+        || this.options.driver === 'msnodesql' || this.options.driver === 'tds';
+
+    this.isOracle = !this.isMssql;
 }
 
 Infowatch.prototype.connect = function (options) {
     var self = this;
 
     return new Bluebird(function (resolve, reject) {
-        oracledb.getConnection(options || self.options, function (err, connection) {
-            if (err) {
-                reject(err);
-            } else {
-                self.connection = connection;
-
-                if (!self.schema) {
-                    self.findIWDMSchema()
-                        .then(function (schema) {
-                            self.schema = schema;
-                            resolve(connection);
-                        })
-                        .catch(reject)
+        if (self.isOracle) {
+            oracledb.getConnection(options || self.options, function (err, connection) {
+                if (err) {
+                    reject(err);
                 } else {
-                    resolve(connection);
+                    self.connection = connection;
+
+                    if (!self.schema) {
+                        self.findIWDMSchema()
+                            .then(function (schema) {
+                                self.schema = schema;
+                                resolve(connection);
+                            })
+                            .catch(reject)
+                    } else {
+                        resolve(connection);
+                    }
                 }
-            }
-        });
+            });
+        } else if (self.isMssql) {
+            sql.connect(options || self.options, function (err) {
+                if (err) {
+                    reject(err)
+                } else {
+                    self.connection = sql;
+                    self.schema = 'dbo';
+                    resolve(sql);
+                }
+            })
+        }
     });
 };
 
@@ -122,17 +146,33 @@ Infowatch.prototype.getHosts = function () {
 };
 
 Infowatch.prototype.getUsers = function (WorkstationId) {
-    var sql = 'SELECT ' +
-        '"User"."Account" AS login,' +
-        '"User"."Sid" AS sid,' +
-        '"User"."FirstName" AS fname,' +
-        '"User"."MiddleName" AS mname,' +
-        '"User"."LastName" AS lname ' +
-        'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
-        'WHERE "UserToWorkstation"."WorkstationId"=:id AND ' +
-        '"UserToWorkstation"."UserId"="User"."Id"';
+    var sql;
 
-    return _runSql(this.connection, sql, [WorkstationId]);
+    if (this.isOracle) {
+        sql = 'SELECT ' +
+            '"User"."Account" AS login,' +
+            '"User"."Sid" AS sid,' +
+            '"User"."FirstName" AS fname,' +
+            '"User"."MiddleName" AS mname,' +
+            '"User"."LastName" AS lname ' +
+            'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
+            'WHERE "UserToWorkstation"."WorkstationId"=:id AND ' +
+            '"UserToWorkstation"."UserId"="User"."Id"';
+
+        return _runSql(this.connection, sql, [WorkstationId]);
+    } else if (this.isMssql) {
+        sql = 'SELECT ' +
+            '"User"."Account" AS login,' +
+            '"User"."Sid" AS sid,' +
+            '"User"."FirstName" AS fname,' +
+            '"User"."MiddleName" AS mname,' +
+            '"User"."LastName" AS lname ' +
+            'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
+            'WHERE "UserToWorkstation"."WorkstationId"=' + WorkstationId + ' AND ' +
+            '"UserToWorkstation"."UserId"="User"."Id"';
+
+        return _runSql(this.connection, sql);
+    }
 };
 
 Infowatch.prototype.disconnect = function () {
@@ -143,13 +183,23 @@ Infowatch.prototype.disconnect = function () {
     }
 
     return new Bluebird(function (resolve, reject) {
-        self.connection.release(function (err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
-        })
+        if (self.isOracle) {
+            self.connection.release(function (err) {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        } else if (self.isMssql) {
+            self.connection.close(function (err) {
+                if (err) {
+                    reject(err)
+                } else {
+                    resolve();
+                }
+            });
+        }
     });
 };
 
