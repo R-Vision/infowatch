@@ -17,26 +17,6 @@ function keysToLowerCase(obj) {
     return newobj;
 }
 
-function _returnResult(resolve, reject) {
-    return function (err, result) {
-        if (err) {
-            reject(err);
-        } else {
-            resolve(result.rows.map(keysToLowerCase));
-        }
-    };
-}
-
-function _runSql(connection, query, data) {
-    if (this.isOracle) {
-        return new Bluebird(function (resolve, reject) {
-            connection.execute(query, data || {}, {outFormat: oracledb.OBJECT}, _returnResult(resolve, reject));
-        });
-    } else {
-        return new sql.Request().query(query).map(keysToLowerCase);
-    }
-}
-
 function Infowatch(options) {
     this.options = options;
     this.connection = null;
@@ -88,6 +68,20 @@ Infowatch.prototype.connect = function (options) {
     });
 };
 
+Infowatch.prototype._runSql = function (query, data) {
+    var self = this;
+
+    if (this.isOracle) {
+        return Bluebird.fromCallback(function (cb) {
+            self.connection.execute(query, data || {}, {outFormat: oracledb.OBJECT}, cb);
+        }).then(function (result) {
+            return result.rows;
+        }).map(keysToLowerCase);
+    } else {
+        return new sql.Request().query(query).map(keysToLowerCase);
+    }
+};
+
 Infowatch.prototype.findIWDMSchema = function () {
     var self = this;
 
@@ -116,7 +110,7 @@ Infowatch.prototype.findIWDMSchema = function () {
 Infowatch.prototype.getSchema = function () {
     var sql = 'SELECT DISTINCT username FROM all_users';
 
-    return _runSql(this.connection, sql).map(function (item) {
+    return this._runSql(sql).map(function (item) {
         return item.username;
     });
 };
@@ -124,7 +118,7 @@ Infowatch.prototype.getSchema = function () {
 Infowatch.prototype.getTables = function (schema) {
     var sql = 'SELECT DISTINCT OBJECT_NAME FROM ALL_OBJECTS WHERE OBJECT_TYPE=:type AND OWNER=:schema';
 
-    return _runSql(this.connection, sql, {
+    return this._runSql(sql, {
         type: 'TABLE',
         schema: schema
     }).map(function (item) {
@@ -142,7 +136,7 @@ Infowatch.prototype.getHosts = function () {
         'FROM "' + this.schema + '"."Workstation","' + this.schema + '"."WorkstationState" ' +
         'WHERE "Workstation"."Uid"="WorkstationState"."Uid"';
 
-    return _runSql(this.connection, sql);
+    return this._runSql(sql);
 };
 
 Infowatch.prototype.getUsers = function (WorkstationId) {
@@ -159,7 +153,7 @@ Infowatch.prototype.getUsers = function (WorkstationId) {
             'WHERE "UserToWorkstation"."WorkstationId"=:id AND ' +
             '"UserToWorkstation"."UserId"="User"."Id"';
 
-        return _runSql(this.connection, sql, [WorkstationId]);
+        return this._runSql(sql, [WorkstationId]);
     } else if (this.isMssql) {
         sql = 'SELECT ' +
             '"User"."Account" AS login,' +
@@ -171,7 +165,7 @@ Infowatch.prototype.getUsers = function (WorkstationId) {
             'WHERE "UserToWorkstation"."WorkstationId"=' + WorkstationId + ' AND ' +
             '"UserToWorkstation"."UserId"="User"."Id"';
 
-        return _runSql(this.connection, sql);
+        return this._runSql(sql);
     }
 };
 
