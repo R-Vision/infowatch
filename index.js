@@ -162,7 +162,7 @@ Infowatch.prototype.getUsers = function (WorkstationId) {
             '"User"."MiddleName" AS mname,' +
             '"User"."LastName" AS lname ' +
             'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
-            'WHERE "UserToWorkstation"."WorkstationId"=' + WorkstationId + ' AND ' +
+            'WHERE "UserToWorkstation"."WorkstationId"=\'' + WorkstationId + '\' AND ' +
             '"UserToWorkstation"."UserId"="User"."Id"';
 
         return this._runSql(sql);
