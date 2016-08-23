@@ -130,6 +130,7 @@ Infowatch.prototype.getHosts = function () {
     var sql = 'SELECT ' +
         '"Workstation"."Id" as id,' +
         '"WorkstationState"."Status" AS status,' +
+        '"WorkstationState"."AccessedAt" AS access,' +
         '"WorkstationState"."IpAddress" AS ip,' +
         '"WorkstationState"."OperationSystem" AS os,' +
         '"Workstation"."Address" AS hostname ' +
