@@ -128,12 +128,12 @@ Infowatch.prototype.getTables = function (schema) {
 
 Infowatch.prototype.getHosts = function () {
     var sql = 'SELECT ' +
-        '"Workstation"."Id" as id,' +
-        '"WorkstationState"."Status" AS status,' +
-        '"WorkstationState"."AccessedAt" AS access,' +
-        '"WorkstationState"."IpAddress" AS ip,' +
-        '"WorkstationState"."OperationSystem" AS os,' +
-        '"Workstation"."Address" AS hostname ' +
+        '"Workstation"."Id" as "id",' +
+        '"WorkstationState"."Status" AS "status",' +
+        '"WorkstationState"."AccessedAt" AS "access",' +
+        '"WorkstationState"."IpAddress" AS "ip",' +
+        '"WorkstationState"."OperationSystem" AS "os",' +
+        '"Workstation"."Address" AS "hostname" ' +
         'FROM "' + this.schema + '"."Workstation","' + this.schema + '"."WorkstationState" ' +
         'WHERE "Workstation"."Uid"="WorkstationState"."Uid"';
 
@@ -145,11 +145,11 @@ Infowatch.prototype.getUsers = function (WorkstationId) {
 
     if (this.isOracle) {
         sql = 'SELECT ' +
-            '"User"."Account" AS login,' +
-            '"User"."Sid" AS sid,' +
-            '"User"."FirstName" AS fname,' +
-            '"User"."MiddleName" AS mname,' +
-            '"User"."LastName" AS lname ' +
+            '"User"."Account" AS "login",' +
+            '"User"."Sid" AS "sid",' +
+            '"User"."FirstName" AS "fname",' +
+            '"User"."MiddleName" AS "mname",' +
+            '"User"."LastName" AS "lname" ' +
             'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
             'WHERE "UserToWorkstation"."WorkstationId"=:id AND ' +
             '"UserToWorkstation"."UserId"="User"."Id"';
