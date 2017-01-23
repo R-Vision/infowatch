@@ -1,6 +1,7 @@
-var oracledb = require('oracledb');
+//var oracledb = require('oracledb');
 var Bluebird = require('bluebird');
 var sql = require('mssql');
+var pg = require('pg');
 
 sql.Promise = Bluebird;
 
@@ -25,17 +26,17 @@ function Infowatch(options) {
         this.schema = this.options.schema;
     }
 
-    this.isMssql = this.options.driver === 'tedious' || this.options.driver === 'msnodesqlv8'
-        || this.options.driver === 'msnodesql' || this.options.driver === 'tds';
+    if (this.options.driver === 'tedious' || this.options.driver === 'msnodesqlv8' || this.options.driver === 'msnodesql' || this.options.driver === 'tds') {
+        this.options.driver = 'tedious';
+    };
 
-    this.isOracle = !this.isMssql;
 }
 
 Infowatch.prototype.connect = function (options) {
     var self = this;
 
     return new Bluebird(function (resolve, reject) {
-        if (self.isOracle) {
+        if (self.options.driver === 'oracle') {
             oracledb.getConnection(options || self.options, function (err, connection) {
                 if (err) {
                     reject(err);
@@ -48,22 +49,30 @@ Infowatch.prototype.connect = function (options) {
                                 self.schema = schema;
                                 resolve(connection);
                             })
-                            .catch(reject)
+                            .catch(reject);
                     } else {
                         resolve(connection);
                     }
                 }
             });
-        } else if (self.isMssql) {
+        } else if (self.options.driver === 'tedious') {
             sql.connect(options || self.options, function (err) {
                 if (err) {
-                    reject(err)
+                    reject(err);
                 } else {
                     self.connection = sql;
                     self.schema = 'dbo';
                     resolve(sql);
                 }
-            })
+            });
+        } else if (self.options.driver === 'postgres') {
+            var client = new pg.Client(options || self.options);
+            client.connect(function(err) {
+                if (err) return reject(err);
+                self.connection = client;
+                self.schema = 'public';
+                resolve(client);
+            });
         }
     });
 };
@@ -71,14 +80,20 @@ Infowatch.prototype.connect = function (options) {
 Infowatch.prototype._runSql = function (query, data) {
     var self = this;
 
-    if (this.isOracle) {
+    if (this.options.driver === 'oracle') {
         return Bluebird.fromCallback(function (cb) {
             self.connection.execute(query, data || {}, {outFormat: oracledb.OBJECT}, cb);
         }).then(function (result) {
             return result.rows;
         }).map(keysToLowerCase);
-    } else {
+    } else if (this.options.driver === 'tedious') {
         return new sql.Request().query(query).map(keysToLowerCase);
+    } else if (this.options.driver === 'postgres') {
+        return Bluebird.fromCallback(function(cb) {
+            self.connection.query(query, cb);
+        }).then(function(result) {
+            return result.rows;
+        });
     }
 };
 
@@ -143,7 +158,7 @@ Infowatch.prototype.getHosts = function () {
 Infowatch.prototype.getUsers = function (WorkstationId) {
     var sql;
 
-    if (this.isOracle) {
+    if (this.options.driver === 'oracle') {
         sql = 'SELECT ' +
             '"User"."Account" AS login,' +
             '"User"."Sid" AS sid,' +
@@ -155,7 +170,7 @@ Infowatch.prototype.getUsers = function (WorkstationId) {
             '"UserToWorkstation"."UserId"="User"."Id"';
 
         return this._runSql(sql, [WorkstationId]);
-    } else if (this.isMssql) {
+    } else if (this.options.driver === 'tedious' || this.options.driver === 'postgres') {
         sql = 'SELECT ' +
             '"User"."Account" AS login,' +
             '"User"."Sid" AS sid,' +
@@ -178,7 +193,7 @@ Infowatch.prototype.disconnect = function () {
     }
 
     return new Bluebird(function (resolve, reject) {
-        if (self.isOracle) {
+        if (self.options.driver === 'oracle') {
             self.connection.release(function (err) {
                 if (err) {
                     reject(err);
@@ -186,13 +201,18 @@ Infowatch.prototype.disconnect = function () {
                     resolve();
                 }
             });
-        } else if (self.isMssql) {
+        } else if (self.options.driver === 'tedious') {
             self.connection.close(function (err) {
                 if (err) {
-                    reject(err)
+                    reject(err);
                 } else {
                     resolve();
                 }
+            });
+        } else if (self.options.driver === 'postgres') {
+            self.connection.end(function(err) {
+                if(err) return reject(err);
+                resolve();
             });
         }
     });
