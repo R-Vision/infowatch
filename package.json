@@ -17,8 +17,8 @@
   },
   "homepage": "https://github.com/R-Vision/infowatch#readme",
   "dependencies": {
-    "bluebird": "^3.3.5",
-    "mssql": "^3.2.1",
+    "bluebird": "^3.4.7",
+    "mssql": "^3.3.0",
     "oracledb": "git+https://github.com/R-Vision/node-oracledb.git",
     "pg": "^6.1.2"
   }

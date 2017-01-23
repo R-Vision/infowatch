@@ -1,4 +1,4 @@
-/var oracledb = require('oracledb');
+var oracledb = require('oracledb');
 var Bluebird = require('bluebird');
 var sql = require('mssql');
 var pg = require('pg');
