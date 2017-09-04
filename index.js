@@ -148,7 +148,8 @@ Infowatch.prototype.getHosts = function () {
         '"WorkstationState"."AccessedAt" AS "access",' +
         '"WorkstationState"."IpAddress" AS "ip",' +
         '"WorkstationState"."OperationSystem" AS "os",' +
-        '"Workstation"."Address" AS "hostname" ' +
+        '"Workstation"."Address" AS "hostname", ' +
+        '"WorkstationState"."AccessedAt" AS "accessed_at" ' +
         'FROM "' + this.schema + '"."Workstation","' + this.schema + '"."WorkstationState" ' +
         'WHERE "Workstation"."Uid"="WorkstationState"."Uid"';
 
