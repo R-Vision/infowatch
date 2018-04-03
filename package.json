@@ -19,7 +19,7 @@
   "dependencies": {
     "bluebird": "^3.4.7",
     "mssql": "^3.3.0",
-    "oracledb": "github:oracle/node-oracledb.git",
+    "oracledb": "^2.1.2",
     "pg": "^6.1.2"
   }
 }
