@@ -178,10 +178,10 @@ Infowatch.prototype.getUsers = function (WorkstationId) {
             '"User"."FirstName" AS fname,' +
             '"User"."MiddleName" AS mname,' +
             '"User"."LastName" AS lname ' +
-            'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ' +
-            'WHERE "UserToWorkstation"."WorkstationId"=\'' + WorkstationId + '\' AND ' +
-            '"UserToWorkstation"."UserId"="User"."Id"';
-
+            'FROM "' + this.schema + '"."UserToWorkstation","' + this.schema + '"."User" ';
+            'WHERE "UserToWorkstation"."UserId"="User"."Id"';
+        if (WorkstationId != undefined)
+            sql += 'AND "UserToWorkstation"."WorkstationId"=\'' + WorkstationId + '\'';
         return this._runSql(sql);
     }
 };

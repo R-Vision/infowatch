@@ -71,7 +71,7 @@ describe('getUsers -- MSSQL', () => {
     const infowatch = new Infowatch(config['tedious']);
     const conn = await infowatch.connect();
     const users = await infowatch.getUsers();
-    console.log(users);
+    // console.log(users);
     expect(users).toBeDefined();
   }, 18000);
 }); // */

@@ -1,0 +1,28 @@
+{
+  "postgres": {
+      "name": "Postgres Sample server",
+      "driver": "postgres",
+      "host": "localhost",
+      "user": "postgres",
+      "password": "localpassword",
+      "database": "iwdm"
+    },
+  "tedious": {
+      "name": "MSSQL Sample server",
+      "driver": "tedious",
+      "server": "localhost",
+      "user": "admin",
+      "password": "localpassword",
+      "domain": "WORKGROUP",
+      "database": "iwdm"
+    },
+  "oracle": {
+      "name": "Oracle Sample server",
+      "driver": "oracle",
+      "host": "localhost",
+      "listener": "",
+      "user": "",
+      "password": "",
+      "database": ""
+  }
+}
